@@ -1,4 +1,4 @@
-# MODULE_NAME
+# tf-f5-bigip
 
 ## Table of Contents
 
