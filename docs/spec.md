@@ -206,8 +206,8 @@ Two independent mitigations, neither substituting for the other (ADR 0006):
 
 1. **`do_json = sensitive(jsonencode(...))`** — redacts plan and apply console output, closing
    the CI-log exposure. Does nothing for state.
-2. **State encryption** — lz-paas ADR 0032, estate-wide, `pbkdf2` via `TF_ENCRYPTION`. Protects
-   state at rest. Does nothing for console output.
+2. **State encryption** — lz-paas ADR 0032, estate-wide, `pbkdf2` keyed by a passphrase supplied
+   as `TF_VAR_state_passphrase`. Protects state at rest. Does nothing for console output.
 
 Secret _values_ reach the module as variables from SOPS material in
 `config/<env>/f5/<device>.sops.json` (lz-paas ADR 0031).
