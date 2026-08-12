@@ -86,7 +86,7 @@ variables {
     cis = {
       password         = "placeholder-not-a-real-password"
       shell            = "none"
-      partition_access = { kubernetes = "admin" }
+      partition_access = { "all-partitions" = "admin" }
     }
   }
 
@@ -248,8 +248,13 @@ run "routes_and_users_render" {
   }
 
   assert {
-    condition     = jsondecode(nonsensitive(bigip_do.base.do_json)).Common.cis.partitionAccess.kubernetes.role == "admin"
-    error_message = "partition_access must render as partition -> {role}"
+    condition     = jsondecode(nonsensitive(bigip_do.base.do_json)).Common.cis.partitionAccess["all-partitions"].role == "admin"
+    error_message = "partition_access must render as scope -> {role}"
+  }
+
+  assert {
+    condition     = jsondecode(nonsensitive(bigip_do.base.do_json)).Common.cis.forceInitialPasswordChange == false
+    error_message = "service accounts must not carry DO's forced initial password change — it blocks the first REST login"
   }
 }
 

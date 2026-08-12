@@ -128,11 +128,16 @@ locals {
 
   user_classes = {
     for k, v in var.users : k => {
-      class           = "User"
-      userType        = "regular"
-      password        = v.password
-      shell           = v.shell
-      partitionAccess = { for p, r in v.partition_access : p => { role = r } }
+      class    = "User"
+      userType = "regular"
+      password = v.password
+      shell    = v.shell
+      # DO defaults this to TRUE, which is right for humans and fatal for the
+      # service accounts this variable exists for: a pending forced password
+      # change blocks the account's first REST login, so CIS would authenticate
+      # into a 401 loop. These users are declared with their final password.
+      forceInitialPasswordChange = false
+      partitionAccess            = { for p, r in v.partition_access : p => { role = r } }
     }
   }
 

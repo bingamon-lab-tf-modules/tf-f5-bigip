@@ -112,7 +112,7 @@ module "bigip_a" {
     cis = {
       password         = var.cis_password
       shell            = "none"
-      partition_access = { kubernetes = "admin" }
+      partition_access = { "all-partitions" = "admin" } # DO accepts only Common / all-partitions
     }
   }
 
@@ -208,7 +208,7 @@ module "bigip_b" {
     cis = {
       password         = var.cis_password
       shell            = "none"
-      partition_access = { kubernetes = "admin" }
+      partition_access = { "all-partitions" = "admin" } # DO accepts only Common / all-partitions
     }
   }
 
