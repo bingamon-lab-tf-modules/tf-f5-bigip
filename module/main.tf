@@ -75,7 +75,15 @@ resource "bigip_do" "base" {
 resource "terraform_data" "peer_gate" {
   count = var.ha == null ? 0 : 1
 
-  input = var.peer_base_complete
+  input = {
+    # Owner side: waits for the member's BASE (ADR 0004 — trust material must
+    # exist before the group is created over it).
+    base = var.peer_base_complete
+    # Member side: waits for the owner's HA declaration — the join asks the
+    # owner to add this device, and TMOS refuses while the owner has no
+    # config-sync address, which the owner's HA declaration is what sets.
+    ha = var.peer_ha_complete
+  }
 }
 
 resource "bigip_do" "ha" {

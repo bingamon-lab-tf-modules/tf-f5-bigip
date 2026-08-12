@@ -183,7 +183,15 @@ locals {
   # onboarded, and so an HA change does not re-push the licence (ADR 0004).
   ##################################################
 
-  ha_device_trust = var.ha == null ? {} : {
+  # THE MEMBER ONLY. F5's canonical clustering pattern puts an identical
+  # DeviceTrust in both declarations and has DO ignore it on the owner
+  # (remoteHost matches the owner's own addresses). This module renders the
+  # asymmetry explicitly instead (ADR 0003) — and MUST NOT render it on the
+  # owner: with remoteHost = the member, the owner's DO would actively ask the
+  # MEMBER to add the owner to trust, the exact reversed join that deadlocks a
+  # parallel onboard ("does not have a config sync address configured" from
+  # whichever side wins the race).
+  ha_device_trust = try(var.ha.role, null) == "member" ? {
     deviceTrust = {
       class          = "DeviceTrust"
       localUsername  = var.ha.local_username
@@ -192,7 +200,7 @@ locals {
       remoteUsername = var.ha.peer_username
       remotePassword = var.ha.peer_password
     }
-  }
+  } : {}
 
   ha_config_sync = var.ha == null ? {} : {
     configSync = {
@@ -209,21 +217,27 @@ locals {
     }
   }
 
-  # Only the owner emits the device group. Asserting it from both sides would
-  # work — DO reconciles — but it hides the asymmetry inside DO's behaviour
-  # rather than showing it in config (ADR 0003).
-  ha_device_group = try(var.ha.role, null) == "owner" ? {
+  # BOTH SIDES emit the device group, identically — this is NOT optional
+  # symmetry. Per DO's own DeviceGroup contract: "A device group will only be
+  # created if the current device is the owner"; members are added "if they
+  # are already in the trust domain"; and a non-owner processing the class is
+  # what triggers its join of the owner's group. A member without the class
+  # NEVER JOINS — trust alone does not populate the group. The `owner` field
+  # is what lets each side infer its role at runtime: the owner names itself
+  # (hostname default), the member names the owner via device_group_owner
+  # (required, validated).
+  ha_device_group = var.ha == null ? {} : {
     failoverGroup = {
       class           = "DeviceGroup"
       type            = var.ha.device_group_type
-      owner           = coalesce(var.ha.device_group_owner, var.hostname)
+      owner           = coalesce(var.ha.device_group_owner, var.ha.role == "owner" ? var.hostname : null)
       members         = var.ha.members
       autoSync        = var.ha.auto_sync
       saveOnAutoSync  = var.ha.save_on_auto_sync
       networkFailover = var.ha.network_failover
       fullLoadOnSync  = var.ha.full_load_on_sync
     }
-  } : {}
+  }
 
   ha_declaration = var.ha == null ? null : {
     schemaVersion = local.do_schema_version
@@ -325,9 +339,9 @@ locals {
     length(var.self_ips) > 0 ? "SelfIp" : "",
     length(var.routes) > 0 ? "Route" : "",
     length(var.users) > 0 ? "User" : "",
-    var.ha != null ? "DeviceTrust" : "",
+    try(var.ha.role, null) == "member" ? "DeviceTrust" : "",
     var.ha != null ? "ConfigSync" : "",
-    try(var.ha.role, null) == "owner" ? "DeviceGroup" : "",
+    var.ha != null ? "DeviceGroup" : "",
     try(var.ha.failover_address, null) != null ? "FailoverUnicast" : "",
   ])
 

@@ -306,10 +306,26 @@ variable "ha" {
     condition     = var.ha == null ? true : can(regex("^\\d+\\.\\d+\\.\\d+\\.\\d+$", var.ha.peer_address))
     error_message = "ha.peer_address must be an IPv4 address."
   }
+
+  validation {
+    condition     = var.ha == null ? true : length(var.ha.members) >= 2
+    error_message = "ha.members must list every device hostname in the group, ON BOTH SIDES. The DeviceGroup class renders in both declarations — a member without it never joins the group (trust alone does not populate membership)."
+  }
+
+  validation {
+    condition     = var.ha == null ? true : (coalesce(var.ha.role, "unset") != "member" || var.ha.device_group_owner != null)
+    error_message = "ha.device_group_owner is required on the member: it names the OWNER (hostname), which is how DO infers this device is not the owner and joins the group instead of creating it."
+  }
 }
 
 variable "peer_base_complete" {
   description = "Ordering handshake (ADR 0004). The landing zone wires the peer module's `base_complete` output into this input, so device trust is only asserted after both appliances have finished base onboarding. Ignored when var.ha is null."
+  type        = string
+  default     = null
+}
+
+variable "peer_ha_complete" {
+  description = "Ordering handshake, second edge — REQUIRED ON THE MEMBER of a pair: wire the OWNER module's `ha_complete` output in. The member's trust join asks the owner to add it, and TMOS refuses if the owner has no config-sync address yet — the owner's HA declaration is what sets it, so the member must run strictly after. Parallel onboarding is a race that fails as \"does not have a config sync address configured\" and rolls back. Leave null on the owner and for standalone."
   type        = string
   default     = null
 }

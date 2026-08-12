@@ -295,7 +295,7 @@ run "standalone_creates_no_ha_declaration" {
 # HA owner
 ##################################################
 
-run "ha_owner_emits_trust_sync_and_device_group" {
+run "ha_owner_emits_sync_and_device_group_but_not_trust" {
   command = plan
 
   variables {
@@ -316,13 +316,8 @@ run "ha_owner_emits_trust_sync_and_device_group" {
   }
 
   assert {
-    condition     = jsondecode(nonsensitive(bigip_do.ha[0].do_json)).Common.deviceTrust.remoteHost == "192.0.2.11"
-    error_message = "DeviceTrust must point at the peer"
-  }
-
-  assert {
-    condition     = jsondecode(nonsensitive(bigip_do.ha[0].do_json)).Common.deviceTrust.localUsername == "admin"
-    error_message = "DeviceTrust localUsername must default to admin"
+    condition     = !contains(keys(jsondecode(nonsensitive(bigip_do.ha[0].do_json)).Common), "deviceTrust")
+    error_message = "the OWNER must not emit DeviceTrust: with remoteHost = the member it would ask the member to add the owner to trust — the reversed join that deadlocks a parallel onboard"
   }
 
   assert {
@@ -365,7 +360,48 @@ run "ha_owner_emits_trust_sync_and_device_group" {
 # HA member
 ##################################################
 
-run "ha_member_does_not_emit_device_group" {
+run "ha_member_emits_trust_and_device_group" {
+  command = plan
+
+  variables {
+    ha = {
+      role               = "member"
+      local_password     = "placeholder-not-a-real-password"
+      peer_address       = "192.0.2.10"
+      peer_password      = "placeholder-not-a-real-password"
+      config_sync_ip     = "203.0.113.10"
+      device_group_owner = "bigip-01.test.invalid"
+      members            = ["bigip-01.test.invalid", "bigip-02.test.invalid"]
+    }
+  }
+
+  assert {
+    condition     = jsondecode(nonsensitive(bigip_do.ha[0].do_json)).Common.deviceTrust.remoteHost == "192.0.2.10"
+    error_message = "the member's DeviceTrust must point at the owner"
+  }
+
+  assert {
+    condition     = jsondecode(nonsensitive(bigip_do.ha[0].do_json)).Common.deviceTrust.localUsername == "admin"
+    error_message = "DeviceTrust localUsername must default to admin"
+  }
+
+  assert {
+    condition     = jsondecode(nonsensitive(bigip_do.ha[0].do_json)).Common.failoverGroup.class == "DeviceGroup"
+    error_message = "the member MUST also emit the DeviceGroup: trust alone does not populate membership — processing the class is what makes a non-owner join"
+  }
+
+  assert {
+    condition     = jsondecode(nonsensitive(bigip_do.ha[0].do_json)).Common.failoverGroup.owner == "bigip-01.test.invalid"
+    error_message = "the member's DeviceGroup owner must name the OWNER, never itself"
+  }
+
+  assert {
+    condition     = contains(output.declaration_summary.classes, "DeviceTrust")
+    error_message = "summary must report DeviceTrust on a member"
+  }
+}
+
+run "ha_member_without_device_group_owner_is_refused" {
   command = plan
 
   variables {
@@ -375,23 +411,11 @@ run "ha_member_does_not_emit_device_group" {
       peer_address   = "192.0.2.10"
       peer_password  = "placeholder-not-a-real-password"
       config_sync_ip = "203.0.113.10"
+      members        = ["bigip-01.test.invalid", "bigip-02.test.invalid"]
     }
   }
 
-  assert {
-    condition     = !contains(keys(jsondecode(nonsensitive(bigip_do.ha[0].do_json)).Common), "failoverGroup")
-    error_message = "only the owner may emit the DeviceGroup — this is the asymmetry ADR 0003 makes explicit"
-  }
-
-  assert {
-    condition     = jsondecode(nonsensitive(bigip_do.ha[0].do_json)).Common.deviceTrust.class == "DeviceTrust"
-    error_message = "a member still establishes trust"
-  }
-
-  assert {
-    condition     = !contains(output.declaration_summary.classes, "DeviceGroup")
-    error_message = "summary must not claim a DeviceGroup on a member"
-  }
+  expect_failures = [var.ha]
 }
 
 ##################################################
