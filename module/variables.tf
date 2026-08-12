@@ -211,7 +211,7 @@ variable "routes" {
 ##################################################
 
 variable "users" {
-  description = "Local users, keyed by username. `partition_access` maps a partition name to a role; the CIS service account normally needs admin on the partition it manages."
+  description = "Local users, keyed by username. `partition_access` maps a partition scope to a role. DO's User class accepts ONLY 'Common' and 'all-partitions' as scopes — a named custom partition is rejected by the DO schema (and would not exist at onboarding time anyway). The CIS service account needs all-partitions admin: CIS drives AS3, which requires Administrator."
   type = map(object({
     password         = string
     shell            = optional(string, "tmsh")
@@ -242,6 +242,15 @@ variable "users" {
       ]
     ]))
     error_message = "user partition_access roles must be valid BIG-IP roles, e.g. 'admin', 'manager', 'operator', 'guest', 'no-access'."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, v in var.users : alltrue([
+        for p, r in v.partition_access : contains(["Common", "all-partitions"], p)
+      ])
+    ])
+    error_message = "user partition_access keys must be 'Common' or 'all-partitions'. DO's User class rejects named partitions (\"should NOT have additional properties\"), and the partition does not exist at onboarding time anyway."
   }
 }
 
