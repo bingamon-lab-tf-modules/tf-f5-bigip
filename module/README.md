@@ -30,7 +30,6 @@ No modules.
 | Name | Type |
 |------|------|
 | [bigip_do.base](https://registry.terraform.io/providers/F5Networks/bigip/latest/docs/resources/do) | resource |
-| [bigip_do.ha](https://registry.terraform.io/providers/F5Networks/bigip/latest/docs/resources/do) | resource |
 | [bigip_partition.this](https://registry.terraform.io/providers/F5Networks/bigip/latest/docs/resources/partition) | resource |
 | [terraform_data.peer_gate](https://registry.terraform.io/providers/hashicorp/terraform/latest/docs/resources/data) | resource |
 | [terraform_data.validation](https://registry.terraform.io/providers/hashicorp/terraform/latest/docs/resources/data) | resource |
@@ -61,7 +60,7 @@ No modules.
 |------|-------------|
 | <a name="output_base_complete"></a> [base\_complete](#output\_base\_complete) | Ordering handshake (ADR 0004). Wire this into the HA peer module's `peer_base_complete` input so device trust is only asserted once both appliances have finished base onboarding. |
 | <a name="output_declaration_summary"></a> [declaration\_summary](#output\_declaration\_summary) | What the rendered declaration contains, with no secrets: classes present, VLAN names and<br/>tags, self IP addresses, routes, provisioning levels, usernames, partitions, and the HA<br/>role and device group.<br/><br/>This is the review surface. `do_json` is redacted (ADR 0006), so a plan shows<br/>"(sensitive value)" with no diff — a change visible nowhere else is visible here. |
-| <a name="output_ha_complete"></a> [ha\_complete](#output\_ha\_complete) | Ordering handshake, second edge: wire this from the OWNER into the member's<br/>`peer_ha_complete`, so the member's trust join runs only after the owner's<br/>config-sync address exists. null for standalone appliances.<br/><br/>CONSUMER WARNING: expose this as its OWN output in any wrapping module —<br/>folding it into an aggregate output that the owner also reads from the<br/>member creates a dependency cycle. |
+| <a name="output_ha_complete"></a> [ha\_complete](#output\_ha\_complete) | Ordering handshake: wire this from the OWNER into the member's<br/>`peer_ha_complete`, so the member's trust join runs only after the owner's<br/>declaration (which sets its config-sync address) has converged. Since the<br/>single-declaration rework this is the device declaration's id — the name<br/>survives so consumers' wiring does not change. null for standalone.<br/><br/>CONSUMER WARNING: expose this as its OWN output in any wrapping module —<br/>folding it into an aggregate output that the owner also reads from the<br/>member creates a dependency cycle. |
 | <a name="output_partition_names"></a> [partition\_names](#output\_partition\_names) | Names of the LTM partitions created, for pointing CIS at its partition. |
 | <a name="output_summary"></a> [summary](#output\_summary) | Compact description of what this appliance will be. |
 | <a name="output_validation_errors"></a> [validation\_errors](#output\_validation\_errors) | Every configuration error found, aggregated. Empty on a valid configuration; a non-empty list fails the plan via the precondition in main.tf. Exposed so it can be asserted directly in tests. |

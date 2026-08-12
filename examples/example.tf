@@ -132,8 +132,8 @@ module "bigip_a" {
     members        = ["bigip-01.example.lab", "bigip-02.example.lab"]
   }
 
-  # Trust is only asserted once node B has finished base onboarding (ADR 0004).
-  peer_base_complete = module.bigip_b.base_complete
+  # The owner gates on NOTHING: its declaration never touches the member.
+  # Ordering lives on the member (peer_ha_complete below).
 }
 
 ##################################################
