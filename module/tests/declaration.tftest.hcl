@@ -266,23 +266,18 @@ run "standalone_creates_no_ha_declaration" {
   command = plan
 
   assert {
-    condition     = length(bigip_do.ha) == 0
-    error_message = "a standalone appliance must not create an HA declaration"
-  }
-
-  assert {
     condition     = length(terraform_data.peer_gate) == 0
     error_message = "a standalone appliance must not create a peer gate"
   }
 
   assert {
     condition     = !contains(keys(jsondecode(nonsensitive(bigip_do.base.do_json)).Common), "deviceTrust")
-    error_message = "the base declaration must never carry DeviceTrust"
+    error_message = "a standalone declaration must not carry DeviceTrust"
   }
 
   assert {
     condition     = !contains(keys(jsondecode(nonsensitive(bigip_do.base.do_json)).Common), "failoverGroup")
-    error_message = "the base declaration must never carry a DeviceGroup"
+    error_message = "a standalone declaration must not carry a DeviceGroup"
   }
 
   assert {
@@ -311,37 +306,37 @@ run "ha_owner_emits_sync_and_device_group_but_not_trust" {
   }
 
   assert {
-    condition     = length(bigip_do.ha) == 1
-    error_message = "an HA appliance must create the HA declaration"
+    condition     = length(terraform_data.peer_gate) == 0
+    error_message = "the OWNER must not create a peer gate: its declaration never touches the member, and gating it on the member would be a cycle"
   }
 
   assert {
-    condition     = !contains(keys(jsondecode(nonsensitive(bigip_do.ha[0].do_json)).Common), "deviceTrust")
+    condition     = !contains(keys(jsondecode(nonsensitive(bigip_do.base.do_json)).Common), "deviceTrust")
     error_message = "the OWNER must not emit DeviceTrust: with remoteHost = the member it would ask the member to add the owner to trust — the reversed join that deadlocks a parallel onboard"
   }
 
   assert {
-    condition     = jsondecode(nonsensitive(bigip_do.ha[0].do_json)).Common.configSync.configsyncIp == "203.0.113.10"
+    condition     = jsondecode(nonsensitive(bigip_do.base.do_json)).Common.configSync.configsyncIp == "203.0.113.10"
     error_message = "ConfigSync must use the declared config sync address"
   }
 
   assert {
-    condition     = jsondecode(nonsensitive(bigip_do.ha[0].do_json)).Common.failoverGroup.class == "DeviceGroup"
+    condition     = jsondecode(nonsensitive(bigip_do.base.do_json)).Common.failoverGroup.class == "DeviceGroup"
     error_message = "the owner must emit the DeviceGroup"
   }
 
   assert {
-    condition     = jsondecode(nonsensitive(bigip_do.ha[0].do_json)).Common.failoverGroup.owner == "bigip-01.test.invalid"
+    condition     = jsondecode(nonsensitive(bigip_do.base.do_json)).Common.failoverGroup.owner == "bigip-01.test.invalid"
     error_message = "the device group owner must default to this appliance's hostname"
   }
 
   assert {
-    condition     = jsondecode(nonsensitive(bigip_do.ha[0].do_json)).Common.failoverGroup.type == "sync-failover"
+    condition     = jsondecode(nonsensitive(bigip_do.base.do_json)).Common.failoverGroup.type == "sync-failover"
     error_message = "device group type must default to sync-failover"
   }
 
   assert {
-    condition     = jsondecode(nonsensitive(bigip_do.ha[0].do_json)).Common.failoverUnicast.port == 1026
+    condition     = jsondecode(nonsensitive(bigip_do.base.do_json)).Common.failoverUnicast.port == 1026
     error_message = "failover unicast port must default to 1026"
   }
 
@@ -376,22 +371,27 @@ run "ha_member_emits_trust_and_device_group" {
   }
 
   assert {
-    condition     = jsondecode(nonsensitive(bigip_do.ha[0].do_json)).Common.deviceTrust.remoteHost == "192.0.2.10"
+    condition     = length(terraform_data.peer_gate) == 1
+    error_message = "the MEMBER must gate on the owner: its trust join fails while the owner has no config-sync address"
+  }
+
+  assert {
+    condition     = jsondecode(nonsensitive(bigip_do.base.do_json)).Common.deviceTrust.remoteHost == "192.0.2.10"
     error_message = "the member's DeviceTrust must point at the owner"
   }
 
   assert {
-    condition     = jsondecode(nonsensitive(bigip_do.ha[0].do_json)).Common.deviceTrust.localUsername == "admin"
+    condition     = jsondecode(nonsensitive(bigip_do.base.do_json)).Common.deviceTrust.localUsername == "admin"
     error_message = "DeviceTrust localUsername must default to admin"
   }
 
   assert {
-    condition     = jsondecode(nonsensitive(bigip_do.ha[0].do_json)).Common.failoverGroup.class == "DeviceGroup"
+    condition     = jsondecode(nonsensitive(bigip_do.base.do_json)).Common.failoverGroup.class == "DeviceGroup"
     error_message = "the member MUST also emit the DeviceGroup: trust alone does not populate membership — processing the class is what makes a non-owner join"
   }
 
   assert {
-    condition     = jsondecode(nonsensitive(bigip_do.ha[0].do_json)).Common.failoverGroup.owner == "bigip-01.test.invalid"
+    condition     = jsondecode(nonsensitive(bigip_do.base.do_json)).Common.failoverGroup.owner == "bigip-01.test.invalid"
     error_message = "the member's DeviceGroup owner must name the OWNER, never itself"
   }
 

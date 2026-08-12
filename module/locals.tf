@@ -142,7 +142,17 @@ locals {
   }
 
   ##################################################
-  # Base declaration
+  # THE device declaration — ONE document per appliance, HA classes included.
+  #
+  # DO is WHOLE-DEVICE declarative: every POST converges Common to exactly
+  # what that document declares, deleting what is absent. A second, partial
+  # "HA-only" document therefore tries to DELETE the VLANs and self-IPs the
+  # first document created — observed live as "01071412:3: Cannot delete IP
+  # (…) because it is used by the system config-sync setting", rolling back.
+  # F5's canonical clustering example is likewise one full declaration per
+  # device. The former base/ha document split (ADR 0004's original shape)
+  # cannot work against real DO; ordering across the PAIR survives as the
+  # peer gate on the member.
   ##################################################
 
   base_common = merge(
@@ -158,6 +168,10 @@ locals {
     local.self_ip_classes,
     local.route_classes,
     local.user_classes,
+    local.ha_config_sync,
+    local.ha_failover_unicast,
+    local.ha_device_trust,
+    local.ha_device_group,
   )
 
   # Two-level merge: root, then Common. Enough to add or replace a whole class,
@@ -170,7 +184,7 @@ locals {
       schemaVersion = local.do_schema_version
       class         = "Device"
       async         = true
-      label         = "tf-f5-bigip base onboarding for ${var.hostname}"
+      label         = "tf-f5-bigip onboarding for ${var.hostname}"
       Common        = merge(local.base_common, local.override_common)
     },
     local.override_root,
@@ -239,19 +253,6 @@ locals {
     }
   }
 
-  ha_declaration = var.ha == null ? null : {
-    schemaVersion = local.do_schema_version
-    class         = "Device"
-    async         = true
-    label         = "tf-f5-bigip HA (${var.ha.role}) for ${var.hostname}"
-    Common = merge(
-      { class = "Tenant" },
-      local.ha_device_trust,
-      local.ha_config_sync,
-      local.ha_failover_unicast,
-      local.ha_device_group,
-    )
-  }
 
   ##################################################
   # Validation
@@ -294,7 +295,10 @@ locals {
   # the appliance. That puts them in the same namespace as the tenant's own
   # properties and this module's fixed class names, where a collision would be
   # silently resolved by merge() rather than reported.
-  reserved_tenant_keys = ["class", "hostname", "myLicense", "myProvisioning", "myDns", "myNtp"]
+  reserved_tenant_keys = [
+    "class", "hostname", "myLicense", "myProvisioning", "myDns", "myNtp",
+    "configSync", "failoverUnicast", "deviceTrust", "failoverGroup",
+  ]
 
   bare_key_errors = concat(
     [

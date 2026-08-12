@@ -57,44 +57,35 @@ resource "terraform_data" "validation" {
 resource "bigip_do" "base" {
   do_json = sensitive(jsonencode(local.base_declaration))
 
-  depends_on = [terraform_data.validation]
+  depends_on = [
+    terraform_data.validation,
+    # MEMBER ONLY (the gate is count-0 everywhere else): the member's whole
+    # declaration — including its trust join — waits for the owner's.
+    terraform_data.peer_gate,
+  ]
 }
 
 ##################################################
-# HA pairing
+# HA pairing — ordering across the pair
 #
-# Ordering within an appliance is the depends_on below. Ordering ACROSS the pair
-# is the peer_gate: the landing zone wires the peer module's base_complete
-# output into var.peer_base_complete, which makes this declaration wait for the
-# peer's base onboarding to finish (ADR 0004).
+# The MEMBER's declaration performs the trust join: it asks the OWNER to add
+# it, and TMOS refuses while the owner has no config-sync address — which the
+# owner's own declaration sets. So the member waits for the owner, and the
+# owner waits for NOTHING: its declaration never touches the member (trust is
+# member-side only; the group is created empty of not-yet-trusted members,
+# who join later). Gating the owner on the member would be a cycle.
 #
 # A value reference, deliberately not module-level depends_on — lz-paas ADR 0024
 # measured that expanding to the cross-product of both modules' resources.
 ##################################################
 
 resource "terraform_data" "peer_gate" {
-  count = var.ha == null ? 0 : 1
+  count = try(var.ha.role, null) == "member" ? 1 : 0
 
   input = {
-    # Owner side: waits for the member's BASE (ADR 0004 — trust material must
-    # exist before the group is created over it).
     base = var.peer_base_complete
-    # Member side: waits for the owner's HA declaration — the join asks the
-    # owner to add this device, and TMOS refuses while the owner has no
-    # config-sync address, which the owner's HA declaration is what sets.
-    ha = var.peer_ha_complete
+    ha   = var.peer_ha_complete
   }
-}
-
-resource "bigip_do" "ha" {
-  count = var.ha == null ? 0 : 1
-
-  do_json = sensitive(jsonencode(local.ha_declaration))
-
-  depends_on = [
-    bigip_do.base,
-    terraform_data.peer_gate,
-  ]
 }
 
 ##################################################

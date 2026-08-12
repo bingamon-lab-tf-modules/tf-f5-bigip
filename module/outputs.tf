@@ -43,15 +43,17 @@ output "base_complete" {
 
 output "ha_complete" {
   description = <<-EOT
-    Ordering handshake, second edge: wire this from the OWNER into the member's
+    Ordering handshake: wire this from the OWNER into the member's
     `peer_ha_complete`, so the member's trust join runs only after the owner's
-    config-sync address exists. null for standalone appliances.
+    declaration (which sets its config-sync address) has converged. Since the
+    single-declaration rework this is the device declaration's id — the name
+    survives so consumers' wiring does not change. null for standalone.
 
     CONSUMER WARNING: expose this as its OWN output in any wrapping module —
     folding it into an aggregate output that the owner also reads from the
     member creates a dependency cycle.
   EOT
-  value       = try(bigip_do.ha[0].id, null)
+  value       = var.ha == null ? null : bigip_do.base.id
 }
 
 output "partition_names" {
