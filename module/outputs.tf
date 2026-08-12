@@ -41,6 +41,19 @@ output "base_complete" {
   value       = bigip_do.base.id
 }
 
+output "ha_complete" {
+  description = <<-EOT
+    Ordering handshake, second edge: wire this from the OWNER into the member's
+    `peer_ha_complete`, so the member's trust join runs only after the owner's
+    config-sync address exists. null for standalone appliances.
+
+    CONSUMER WARNING: expose this as its OWN output in any wrapping module —
+    folding it into an aggregate output that the owner also reads from the
+    member creates a dependency cycle.
+  EOT
+  value       = try(bigip_do.ha[0].id, null)
+}
+
 output "partition_names" {
   description = "Names of the LTM partitions created, for pointing CIS at its partition."
   value       = sort(keys(bigip_partition.this))

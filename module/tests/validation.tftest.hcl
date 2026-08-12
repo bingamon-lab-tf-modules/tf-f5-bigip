@@ -108,6 +108,7 @@ run "config_sync_ip_not_matching_a_self_ip" {
       peer_address   = "192.0.2.11"
       peer_password  = "placeholder-not-a-real-password"
       config_sync_ip = "203.0.113.99"
+      members        = ["bigip-01.test.invalid", "bigip-02.test.invalid"]
     }
   }
 
@@ -133,6 +134,7 @@ run "failover_address_not_matching_a_self_ip" {
       peer_password    = "placeholder-not-a-real-password"
       config_sync_ip   = "198.51.100.10"
       failover_address = "203.0.113.99"
+      members          = ["bigip-01.test.invalid", "bigip-02.test.invalid"]
     }
   }
 

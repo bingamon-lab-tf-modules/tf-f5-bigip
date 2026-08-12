@@ -219,13 +219,22 @@ module "bigip_b" {
   }
 
   # A member establishes trust but does not own the device group.
+  # The member carries the SAME group definition as the owner — trust alone
+  # does not populate membership — and names the owner in device_group_owner.
   ha = {
-    role           = "member"
-    local_password = var.bigip_password
-    peer_address   = "192.0.2.10"
-    peer_password  = var.bigip_password
-    config_sync_ip = "203.0.113.21"
+    role               = "member"
+    local_password     = var.bigip_password
+    peer_address       = "192.0.2.10"
+    peer_password      = var.bigip_password
+    config_sync_ip     = "203.0.113.21"
+    device_group_owner = "bigip-01.example.lab"
+    members            = ["bigip-01.example.lab", "bigip-02.example.lab"]
   }
+
+  # THE ORDER IS LOAD-BEARING: the member's trust join asks the owner to add
+  # it, and TMOS refuses while the owner has no config-sync address — which
+  # the owner's HA declaration is what sets. Member strictly after owner.
+  peer_ha_complete = module.bigip_a.ha_complete
 }
 
 ##################################################
