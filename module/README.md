@@ -10,14 +10,14 @@ A description of the module goes here.
 ## Requirements
 
 | Name | Version |
-|------|---------|
+| ---- | ------- |
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.10.0 |
 | <a name="requirement_bigip"></a> [bigip](#requirement\_bigip) | >= 1.28.0 |
 
 ## Providers
 
 | Name | Version |
-|------|---------|
+| ---- | ------- |
 | <a name="provider_bigip"></a> [bigip](#provider\_bigip) | 1.28.0 |
 | <a name="provider_terraform"></a> [terraform](#provider\_terraform) | n/a |
 
@@ -28,7 +28,7 @@ No modules.
 ## Resources
 
 | Name | Type |
-|------|------|
+| ---- | ---- |
 | [bigip_do.base](https://registry.terraform.io/providers/F5Networks/bigip/latest/docs/resources/do) | resource |
 | [bigip_partition.this](https://registry.terraform.io/providers/F5Networks/bigip/latest/docs/resources/partition) | resource |
 | [terraform_data.peer_gate](https://registry.terraform.io/providers/hashicorp/terraform/latest/docs/resources/data) | resource |
@@ -37,7 +37,7 @@ No modules.
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
+| ---- | ----------- | ---- | ------- | :------: |
 | <a name="input_dns"></a> [dns](#input\_dns) | DNS resolver configuration. Null omits the DNS class. | <pre>object({<br/>    name_servers = optional(list(string), [])<br/>    search       = optional(list(string), [])<br/>  })</pre> | `null` | no |
 | <a name="input_do_declaration_overrides"></a> [do\_declaration\_overrides](#input\_do\_declaration\_overrides) | Last-resort overrides merged over the rendered base declaration, for DO classes this module<br/>does not yet render as typed variables.<br/><br/>Merging is TWO-LEVEL: keys are merged at the declaration root, and at the `Common` tenant<br/>level. It is sufficient to add or wholly replace a class; it does NOT merge within a class.<br/><br/>Module-owned classes are refused: License, User, DeviceTrust, DeviceGroup, ConfigSync.<br/>Anything set here is invisible to variable validation, by construction. | `any` | `{}` | no |
 | <a name="input_enforce_validation"></a> [enforce\_validation](#input\_enforce\_validation) | Fail the plan when validation errors exist. Test seam only — leave true in every real configuration. | `bool` | `true` | no |
@@ -57,7 +57,7 @@ No modules.
 ## Outputs
 
 | Name | Description |
-|------|-------------|
+| ---- | ----------- |
 | <a name="output_base_complete"></a> [base\_complete](#output\_base\_complete) | Ordering handshake (ADR 0004). Wire this into the HA peer module's `peer_base_complete` input so device trust is only asserted once both appliances have finished base onboarding. |
 | <a name="output_declaration_summary"></a> [declaration\_summary](#output\_declaration\_summary) | What the rendered declaration contains, with no secrets: classes present, VLAN names and<br/>tags, self IP addresses, routes, provisioning levels, usernames, partitions, and the HA<br/>role and device group.<br/><br/>This is the review surface. `do_json` is redacted (ADR 0006), so a plan shows<br/>"(sensitive value)" with no diff — a change visible nowhere else is visible here. |
 | <a name="output_ha_complete"></a> [ha\_complete](#output\_ha\_complete) | Ordering handshake: wire this from the OWNER into the member's<br/>`peer_ha_complete`, so the member's trust join runs only after the owner's<br/>declaration (which sets its config-sync address) has converged. Since the<br/>single-declaration rework this is the device declaration's id — the name<br/>survives so consumers' wiring does not change. null for standalone.<br/><br/>CONSUMER WARNING: expose this as its OWN output in any wrapping module —<br/>folding it into an aggregate output that the owner also reads from the<br/>member creates a dependency cycle. |
