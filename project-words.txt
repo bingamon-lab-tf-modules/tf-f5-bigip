@@ -89,3 +89,5 @@ unreviewable
 urldb
 utilize
 vcmp
+SecretSpec
+mktemp
