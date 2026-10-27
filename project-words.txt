@@ -91,3 +91,5 @@ utilize
 vcmp
 SecretSpec
 mktemp
+esac
+secops
