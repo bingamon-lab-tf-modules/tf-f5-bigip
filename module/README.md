@@ -18,7 +18,7 @@ A description of the module goes here.
 
 | Name | Version |
 | ---- | ------- |
-| <a name="provider_bigip"></a> [bigip](#provider\_bigip) | 1.28.0 |
+| <a name="provider_bigip"></a> [bigip](#provider\_bigip) | 1.29.0 |
 | <a name="provider_terraform"></a> [terraform](#provider\_terraform) | n/a |
 
 ## Modules
