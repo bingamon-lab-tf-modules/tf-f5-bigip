@@ -93,3 +93,12 @@ SecretSpec
 mktemp
 esac
 secops
+artifactory
+codeql
+nixfmt
+opentofu
+shellcheck
+shfmt
+statix
+trivy
+yamllint
