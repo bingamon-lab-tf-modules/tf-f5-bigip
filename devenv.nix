@@ -32,6 +32,7 @@ let
 
     # Secrets
     age
+    sops
     ssh-to-age
     ssh-to-pgp
 
@@ -65,7 +66,7 @@ let
 
 in
 {
-  name = "tf-template";
+  name = "tf-f5-bigip";
 
   env = {
     PROJECT = config.name;
@@ -145,6 +146,13 @@ in
       check-yaml.enable = true;
       commitizen.enable = true;
       convco.enable = true;
+      cspell = {
+        enable = true;
+        args = [
+          "lint"
+          "--no-must-find-files"
+        ];
+      };
       deadnix.enable = true;
       dialyzer.enable = true;
       editorconfig-checker.enable = true;
@@ -173,6 +181,9 @@ in
                 "sup"
               ];
             };
+            MD041 = false;
+            MD059 = false;
+            MD060 = false;
           };
         };
       };
@@ -183,6 +194,7 @@ in
         enable = true;
         excludes = [
           "module/README.md"
+          "module/tests/README.md"
         ];
       };
       # Use prettier instead.
@@ -203,19 +215,12 @@ in
         enable = true;
         name = "tofu-validate-module";
         entry = "tofu-validate-module";
-        files = "^module/.*\\.*$";
+        files = "^modules?/.*$";
         pass_filenames = false;
       };
       tflint.enable = true;
       trim-trailing-whitespace.enable = true;
       trufflehog.enable = false;
-      cspell = {
-        enable = true;
-        args = [
-          "lint"
-          "--no-must-find-files"
-        ];
-      };
       yamllint = {
         enable = true;
         settings = {
@@ -280,18 +285,32 @@ in
       package = pkgs.bash;
       description = "Validate Terraform Module";
       exec = ''
-        MODULE_HOME="$(pwd)/module"
-        if [ ! -d "''${MODULE_HOME}" ];
+        REPO_ROOT="$(pwd)"
+        if [ ! -d "''${REPO_ROOT}/module" ];
         then
-          echo "Directory ''${MODULE_HOME} does not exist. Please run this script from the root of the repository."
+          echo "Directory ''${REPO_ROOT}/module does not exist. Please run this script from the root of the repository."
           exit 1
         fi
-        echo "Checking Terraform Module for ''${MODULE_HOME}"
-        tofu-format "''${MODULE_HOME}" || exit 1
-        tofu-clean "''${MODULE_HOME}" || exit 1
-        tofu-init "''${MODULE_HOME}" || exit 1
-        tofu-validate "''${MODULE_HOME}" || exit 1
-        tofu-docs "''${MODULE_HOME}" || exit 1
+        MODULE_HOMES="''${REPO_ROOT}/module"
+        if [ -d "''${REPO_ROOT}/modules" ];
+        then
+          for CANDIDATE in "''${REPO_ROOT}"/modules/*;
+          do
+            if [ -d "''${CANDIDATE}" ];
+            then
+              MODULE_HOMES="''${MODULE_HOMES} ''${CANDIDATE}"
+            fi
+          done
+        fi
+        for MODULE_HOME in ''${MODULE_HOMES};
+        do
+          echo "Checking Terraform Module for ''${MODULE_HOME}"
+          tofu-format "''${MODULE_HOME}" || exit 1
+          tofu-clean "''${MODULE_HOME}" || exit 1
+          tofu-init "''${MODULE_HOME}" || exit 1
+          tofu-validate "''${MODULE_HOME}" || exit 1
+          tofu-docs "''${MODULE_HOME}" || exit 1
+        done
       '';
     };
 
@@ -335,7 +354,7 @@ in
         fi
         echo "Formatting OpenTofu code in ''${DIR}"
         pushd "''${DIR}"
-        tofu fmt -write=true "''${DIR}" || {
+        tofu fmt -write=true -recursive "''${DIR}" || {
           echo "Failed to format OpenTofu code in ''${DIR}"
           exit 1
         }
@@ -360,7 +379,7 @@ in
         fi
         echo "Initialising OpenTofu providers in ''${DIR}"
         pushd "''${DIR}"
-        tofu init -backend=false || {
+        tofu init -backend=false -input=false || {
           echo "Failed to initialise OpenTofu providers in ''${DIR}"
           exit 1
         }
@@ -387,6 +406,31 @@ in
         pushd "''${DIR}"
         tofu validate || {
           echo "Failed to validate OpenTofu code in ''${DIR}"
+          exit 1
+        }
+        popd
+      '';
+    };
+
+    tofu-test = {
+      package = pkgs.bash;
+      description = "Run OpenTofu tests in a given directory";
+      exec = ''
+        DIR="''${1:-}"
+        if [ "''${DIR:-EMPTY}" == "EMPTY" ];
+        then
+          echo "Usage: $0 <directory>"
+          exit 1
+        fi
+        if [ ! -d "''${DIR}" ];
+        then
+          echo "Directory ''${DIR} does not exist"
+          exit 1
+        fi
+        echo "Running OpenTofu tests in ''${DIR}"
+        pushd "''${DIR}"
+        tofu test -verbose || {
+          echo "Failed to run OpenTofu tests in ''${DIR}"
           exit 1
         }
         popd
