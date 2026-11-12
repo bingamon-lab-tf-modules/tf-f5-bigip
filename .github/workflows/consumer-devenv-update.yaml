@@ -25,7 +25,7 @@ jobs:
   # -------------------------------------------------
   update:
     name: Update Devenv Dependencies
-    uses: tars-cloud/actions/.github/workflows/consumer-devenv-update.yaml@66eaed79bdbbb12ecbc98d3a50b6ab58b289b19b # v3.13.2
+    uses: tars-cloud/actions/.github/workflows/consumer-devenv-update.yaml@68bf7f5eb020c47825bd5510eee164ef11fbcf9d # v3.14.0
     with:
       debug: false
       runner-architecture: AMD64
